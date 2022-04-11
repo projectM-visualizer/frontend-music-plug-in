@@ -139,6 +139,10 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 
 	UpdateInfoTimeOut( visualPluginData );
 
+	if ([visualPluginData->destView respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)]) {
+	    [visualPluginData->destView setWantsBestResolutionOpenGLSurface:YES];
+	}
+
 #if USE_SUBVIEW
 
 	// NSView-based subview
@@ -146,8 +150,10 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 	if ( visualPluginData->subview != NULL )
 	{
 		[visualPluginData->subview setAutoresizingMask: (NSViewWidthSizable | NSViewHeightSizable)];
-
 		[visualPluginData->subview setVisualPluginData:visualPluginData];
+		if ([visualPluginData->subview respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)]) {
+		    [visualPluginData->subview setWantsBestResolutionOpenGLSurface:YES];
+		}
 
 		[destView addSubview:visualPluginData->subview];
 	}
@@ -186,7 +192,7 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 //
 OSStatus MoveVisual( VisualPluginData * visualPluginData, OptionBits newOptions )
 {
-	visualPluginData->destRect	  = [visualPluginData->destView bounds];
+    visualPluginData->destRect	  = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
 	visualPluginData->destOptions = newOptions;
 
 	return noErr;
@@ -266,12 +272,9 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
     NSLog(@"initWithFrame called");
     NSOpenGLPixelFormatAttribute pixelFormatAttributes[] =
     {
-        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-//        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion4_1Core,
-//        NSOpenGLPFAColorSize    , 24                           ,
-//        NSOpenGLPFAAlphaSize    , 8                            ,
-//        NSOpenGLPFADoubleBuffer ,
-        NSOpenGLPFAAccelerated  ,
+        NSOpenGLPFAOpenGLProfile,
+        NSOpenGLProfileVersion3_2Core,
+        NSOpenGLPFAAccelerated,
         0
     };
     NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
