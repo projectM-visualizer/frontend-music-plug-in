@@ -6,11 +6,11 @@
 // https://www.fenestrated.net/mirrors/Apple%20Technotes%20(As%20of%202002)/tn/tn2016.html
 
 #import "iprojectM.hpp"
+#import "CocoaKeysToProjectM.h"
 
 #import <AppKit/AppKit.h>
 #import <OpenGL/gl3.h>
 #import <string.h>
-#include "libprojectM/cocoatoprojectM.h"
 
 #define kTVisualPluginName CFSTR("projectM")
 
@@ -49,7 +49,7 @@ void DrawVisual( VisualPluginData * visualPluginData )
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     // render
-    visualPluginData->pm->renderFrame();
+    projectm_render_frame(visualPluginData->pm);
 
     glFlush();
     
@@ -212,7 +212,7 @@ OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
     visualPluginData->readyToDraw = false;
 
     if (visualPluginData->pm != NULL) {
-        delete(visualPluginData->pm);
+        projectm_destroy(visualPluginData->pm);
         visualPluginData->pm = NULL;
     }
 	
@@ -228,7 +228,7 @@ OSStatus ResizeVisual( VisualPluginData * visualPluginData )
     visualPluginData->destRect = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
 
     if (visualPluginData->pm != NULL) {
-        visualPluginData->pm->projectM_resetGL(visualPluginData->destRect.size.width, visualPluginData->destRect.size.height);
+        projectm_set_window_size(visualPluginData->pm, visualPluginData->destRect.size.width, visualPluginData->destRect.size.height);
         NSLog(@"resized to %@ %@", [NSNumber numberWithDouble: visualPluginData->destRect.size.width], [NSNumber numberWithDouble: visualPluginData->destRect.size.height]);
         
         visualPluginData->readyToDraw = true;

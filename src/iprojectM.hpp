@@ -48,8 +48,8 @@
 #ifndef ITUNESPLUGIN_H
 #define ITUNESPLUGIN_H
 
-#include "iTunesVisualAPI.h"
-#include "libprojectM/projectM.hpp"
+#include "macos/iTunesVisualAPI.h"
+#include "libprojectM/projectM.h"
 #include "getConfigFilename.h"
 #include <time.h>
 #include <OpenGL/gl3.h>
@@ -99,7 +99,7 @@ struct VisualPluginData
 	ITAppProcPtr		appProc;
     
     // projectM stuff
-    projectM            *pm;
+    projectm_handle      pm;
 
 #if TARGET_OS_MAC
 	NSView*		        destView;
