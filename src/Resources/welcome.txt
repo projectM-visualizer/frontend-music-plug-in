@@ -1,0 +1,3 @@
+Welcome to the projectM Music Visualization Plug-in installer!
+
+This package will install the projectM visualizer plug-in for the Apple Music app.
