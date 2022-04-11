@@ -10,6 +10,7 @@ add_library(ProjectM MODULE
     iprojectM_mac.mm
     )
 
+set_target_properties(ProjectM PROPERTIES BUNDLE TRUE)
 set_target_properties(ProjectM PROPERTIES
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Resources/ProjectM-plugin-info.plist"
     )
