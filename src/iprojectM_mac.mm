@@ -6,11 +6,11 @@
 // https://www.fenestrated.net/mirrors/Apple%20Technotes%20(As%20of%202002)/tn/tn2016.html
 
 #import "iprojectM.hpp"
+#import "CocoaKeysToProjectM.h"
 
 #import <AppKit/AppKit.h>
 #import <OpenGL/gl3.h>
 #import <string.h>
-#include "libprojectM/cocoatoprojectM.h"
 
 #define kTVisualPluginName CFSTR("projectM")
 
@@ -49,7 +49,7 @@ void DrawVisual( VisualPluginData * visualPluginData )
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     // render
-    visualPluginData->pm->renderFrame();
+    projectm_render_frame(visualPluginData->pm);
 
     glFlush();
     
@@ -139,6 +139,10 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 
 	UpdateInfoTimeOut( visualPluginData );
 
+	if ([visualPluginData->destView respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)]) {
+	    [visualPluginData->destView setWantsBestResolutionOpenGLSurface:YES];
+	}
+
 #if USE_SUBVIEW
 
 	// NSView-based subview
@@ -146,8 +150,10 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 	if ( visualPluginData->subview != NULL )
 	{
 		[visualPluginData->subview setAutoresizingMask: (NSViewWidthSizable | NSViewHeightSizable)];
-
 		[visualPluginData->subview setVisualPluginData:visualPluginData];
+		if ([visualPluginData->subview respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)]) {
+		    [visualPluginData->subview setWantsBestResolutionOpenGLSurface:YES];
+		}
 
 		[destView addSubview:visualPluginData->subview];
 	}
@@ -186,7 +192,7 @@ OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VI
 //
 OSStatus MoveVisual( VisualPluginData * visualPluginData, OptionBits newOptions )
 {
-	visualPluginData->destRect	  = [visualPluginData->destView bounds];
+    visualPluginData->destRect	  = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
 	visualPluginData->destOptions = newOptions;
 
 	return noErr;
@@ -212,7 +218,7 @@ OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
     visualPluginData->readyToDraw = false;
 
     if (visualPluginData->pm != NULL) {
-        delete(visualPluginData->pm);
+        projectm_destroy(visualPluginData->pm);
         visualPluginData->pm = NULL;
     }
 	
@@ -228,7 +234,7 @@ OSStatus ResizeVisual( VisualPluginData * visualPluginData )
     visualPluginData->destRect = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
 
     if (visualPluginData->pm != NULL) {
-        visualPluginData->pm->projectM_resetGL(visualPluginData->destRect.size.width, visualPluginData->destRect.size.height);
+        projectm_set_window_size(visualPluginData->pm, visualPluginData->destRect.size.width, visualPluginData->destRect.size.height);
         NSLog(@"resized to %@ %@", [NSNumber numberWithDouble: visualPluginData->destRect.size.width], [NSNumber numberWithDouble: visualPluginData->destRect.size.height]);
         
         visualPluginData->readyToDraw = true;
@@ -266,12 +272,9 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
     NSLog(@"initWithFrame called");
     NSOpenGLPixelFormatAttribute pixelFormatAttributes[] =
     {
-        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-//        NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion4_1Core,
-//        NSOpenGLPFAColorSize    , 24                           ,
-//        NSOpenGLPFAAlphaSize    , 8                            ,
-//        NSOpenGLPFADoubleBuffer ,
-        NSOpenGLPFAAccelerated  ,
+        NSOpenGLPFAOpenGLProfile,
+        NSOpenGLProfileVersion3_2Core,
+        NSOpenGLPFAAccelerated,
         0
     };
     NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];

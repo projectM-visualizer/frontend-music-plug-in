@@ -12,42 +12,39 @@ void initProjectM( VisualPluginData * visualPluginData, std::string presetPath )
     std::string cfg_path = "/usr/local/share/projectM/config.inp";
 
     // hardcoded settings - disabled
-    projectM::Settings settings;
-    settings.meshX = 140;
-    settings.meshY = 110;
+    projectm_settings settings;
+    settings.mesh_x = 140;
+    settings.mesh_y = 110;
     settings.fps   = 60;
-    settings.textureSize = 2048;  // idk?
-    settings.windowWidth = 1920;
-    settings.windowHeight = 1280;
-    settings.smoothPresetDuration = 0.5; // seconds
-    settings.aspectCorrection = 1;
-    settings.easterEgg = 0; // ???
-    settings.presetDuration = 15; // seconds
-    settings.beatSensitivity = 3;
-    settings.shuffleEnabled = 1;
-    settings.softCutRatingsEnabled = 1; // ???
+    settings.texture_size = 2048;  // idk?
+    settings.window_width = 0; // Keep at 0 until we have the proper size.
+    settings.window_height = 0; // Keep at 0 until we have the proper size.
+    settings.soft_cut_duration = 2.0; // seconds
+    settings.aspect_correction = 1;
+    settings.easter_egg = 0; // ???
+    settings.preset_duration = 30.0; // seconds
+    settings.beat_sensitivity = 3;
+    settings.shuffle_enabled = true;
+    settings.soft_cut_ratings_enabled = false; // ???
+    settings.preset_url = projectm_alloc_string(presetPath.length() + 1);
+    strncpy(settings.preset_url, presetPath.c_str(), presetPath.length());
 
-    settings.presetURL = presetPath;
-    settings.titleFontURL = "/usr/local/share/projectM/fonts/Vera.ttf";
-    settings.menuFontURL = "/usr/local/share/projectM/fonts/VeraMono.ttf";
-    projectM *pm = new projectM(settings, 0);
+    projectm_handle pm = projectm_create_settings(&settings, PROJECTM_FLAG_NONE);
+
+    projectm_free_string(settings.preset_url);
     
     NSLog(@"GL_VERSION: %s", glGetString(GL_VERSION));
     NSLog(@"GL_SHADING_LANGUAGE_VERSION: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
     NSLog(@"GL_VENDOR: %s", glGetString(GL_VENDOR));
 
-    // use config file
-//    projectM *pm = new projectM(cfg_path);
-
     visualPluginData->pm = pm;
-    
-    pm->selectRandom(true);
-    NSLog(@"random selected");
 
+    projectm_select_random_preset(pm, true);
+    NSLog(@"random selected");
 }
 
 void keypressProjectM( VisualPluginData * visualPluginData, projectMEvent event, projectMKeycode keycode, projectMModifier mod ) {
-    visualPluginData->pm->key_handler(event, keycode, mod);
+    projectm_key_handler(visualPluginData->pm, event, keycode, mod);
 }
 
 void renderProjectMTexture( VisualPluginData * visualPluginData ){
@@ -100,9 +97,9 @@ void renderProjectMTexture( VisualPluginData * visualPluginData ){
 //
 void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID, const RenderVisualData * renderData )
 {
-	SInt16		index;
-	SInt32		channel;
-    projectM    *pm = visualPluginData->pm;
+	SInt16 index;
+	SInt32 channel;
+    projectm_handle  pm = visualPluginData->pm;
 
 	visualPluginData->renderTimeStampID	= timeStampID;
 
@@ -135,7 +132,8 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
     
     if (pm != NULL) {
         // pass waveform data to projectM
-        pm->pcm()->addPCM8_512(renderData->waveformData);
+        projectm_pcm_add_uint8(pm, reinterpret_cast<const uint8_t*>(renderData->waveformData[0][0]),
+                               512, PROJECTM_STEREO);
     }
 }
 
@@ -260,7 +258,7 @@ static OSStatus VisualPluginHandler(OSType message,VisualPluginMessageInfo *mess
 		{
 			if ( visualPluginData != NULL ) {
                 if (visualPluginData->pm) {
-                    delete(visualPluginData->pm);
+                    projectm_destroy(visualPluginData->pm);
                     visualPluginData->pm = NULL;
                 }
 				free( visualPluginData );
