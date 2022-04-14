@@ -12,7 +12,7 @@ void initProjectM( VisualPluginData * visualPluginData, std::string presetPath )
     std::string cfg_path = "/usr/local/share/projectM/config.inp";
 
     // hardcoded settings - disabled
-    projectm_settings settings;
+    projectm_settings settings{};
     settings.mesh_x = 140;
     settings.mesh_y = 110;
     settings.fps   = 60;
