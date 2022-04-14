@@ -12,7 +12,7 @@ void initProjectM( VisualPluginData * visualPluginData, std::string presetPath )
     std::string cfg_path = "/usr/local/share/projectM/config.inp";
 
     // hardcoded settings - disabled
-    projectm_settings settings;
+    projectm_settings settings{};
     settings.mesh_x = 140;
     settings.mesh_y = 110;
     settings.fps   = 60;
@@ -103,7 +103,7 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
 
 	visualPluginData->renderTimeStampID	= timeStampID;
 
-	if ( renderData == NULL )
+	if (renderData == nullptr)
 	{
 		memset( &visualPluginData->renderData, 0, sizeof(visualPluginData->renderData) );
 		return;
@@ -129,12 +129,22 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
 				visualPluginData->maxLevel[channel] = value;
 		}
 	}
-    
-    if (pm != NULL) {
-        // pass waveform data to projectM
-        projectm_pcm_add_uint8(pm, reinterpret_cast<const uint8_t*>(renderData->waveformData[0][0]),
-                               512, PROJECTM_STEREO);
-    }
+
+	if (pm == nullptr)
+	{
+	    return;
+	}
+
+	// Interleave audio data from the two channel buffers
+	UInt8 interleavedData[kVisualNumWaveformEntries][kVisualMaxDataChannels];
+	for (auto sample = 0; sample < kVisualNumWaveformEntries; sample++)
+	{
+	    interleavedData[sample][0] = renderData->waveformData[0][sample];
+	    interleavedData[sample][1] = renderData->waveformData[1][sample];
+	}
+
+    // pass waveform data to projectM
+    projectm_pcm_add_uint8(pm, &interleavedData[0][0],512, PROJECTM_STEREO);
 }
 
 //-------------------------------------------------------------------------------------------------
