@@ -111,6 +111,7 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
 
 	visualPluginData->renderData = *renderData;
 	
+	/* disabled
 	for ( channel = 0;channel < renderData->numSpectrumChannels; channel++ )
 	{
 		visualPluginData->minLevel[channel] = 
@@ -128,12 +129,11 @@ void ProcessRenderData( VisualPluginData * visualPluginData, UInt32 timeStampID,
 			else if ( value > visualPluginData->maxLevel[channel] )
 				visualPluginData->maxLevel[channel] = value;
 		}
-	}
+	}*/
     
     if (pm != NULL) {
         // pass waveform data to projectM
         projectm_pcm_add_uint8(pm, reinterpret_cast<const uint8_t*>(renderData->waveformData[0][0]),
-                               512, PROJECTM_STEREO);
     }
 }
 
