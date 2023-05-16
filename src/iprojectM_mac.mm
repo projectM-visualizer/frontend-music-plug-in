@@ -6,86 +6,94 @@
 // https://www.fenestrated.net/mirrors/Apple%20Technotes%20(As%20of%202002)/tn/tn2016.html
 
 #import "iprojectM.hpp"
-#import "CocoaKeysToProjectM.h"
-
-#import <AppKit/AppKit.h>
-#import <OpenGL/gl3.h>
-#import <string.h>
 
 #define kTVisualPluginName CFSTR("projectM")
 
-extern "C" OSStatus iTunesPluginMainMachO( OSType inMessage, PluginMessageInfo *inMessageInfoPtr, void *refCon ) __attribute__((visibility("default")));
+extern "C" OSStatus iTunesPluginMainMachO(OSType inMessage, PluginMessageInfo *inMessageInfoPtr,
+                                          void *refCon) __attribute__((visibility("default")));
 
-static bool _keypressProjectM( VisualPluginData * visualPluginData, projectMEvent eventType, NSEvent *event );
+static bool _keypressProjectM(VisualPluginData *visualPluginData, NSEvent *event);
 
 #if USE_SUBVIEW
+
 @interface VisualView : NSOpenGLView
 {
-	VisualPluginData *	_visualPluginData;
+    VisualPluginData *_visualPluginData;
 }
 
-@property (nonatomic, assign) VisualPluginData * visualPluginData;
+@property(nonatomic, assign) VisualPluginData *visualPluginData;
 
 - (void)drawRect:(NSRect)dirtyRect;
+
 - (BOOL)acceptsFirstResponder;
+
 - (BOOL)becomeFirstResponder;
+
 - (BOOL)resignFirstResponder;
+
 - (void)keyDown:(NSEvent *)theEvent;
+
 - (void)keyUp:(NSEvent *)theEvent;
 
 @end
 
-#endif	// USE_SUBVIEW
+#endif    // USE_SUBVIEW
 
-void DrawVisual( VisualPluginData * visualPluginData )
+void DrawVisual(VisualPluginData *visualPluginData)
 {
-	CGPoint where;
+    CGPoint where;
 
     VISUAL_PLATFORM_VIEW drawView = visualPluginData->subview;
     if (!visualPluginData->readyToDraw)
-        return;
-    
-	glClearColor( 0.0, 0.0, 0.0, 0.0 );
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    
-    // render
-    projectm_render_frame(visualPluginData->pm);
+	{
+		return;
+	}
+
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Render a frame
+    projectm_opengl_render_frame(visualPluginData->pm);
 
     glFlush();
-    
-    
+
+
     // TODO: artwork overlay
-    
-	// should we draw the info/artwork in the bottom-left corner?
-	time_t		theTime = time( NULL );
 
-	if ( theTime < visualPluginData->drawInfoTimeOut )
-	{
-		where = CGPointMake( 10, 10 );
+    // should we draw the info/artwork in the bottom-left corner?
+    time_t theTime = time(NULL);
 
-		// if we have a song title, draw it (prefer the stream title over the regular name if we have it)
-		NSString *				theString = NULL;
+    if (theTime < visualPluginData->drawInfoTimeOut)
+    {
+        where = CGPointMake(10, 10);
 
-		if ( visualPluginData->streamInfo.streamTitle[0] != 0 )
+        // if we have a song title, draw it (prefer the stream title over the regular name if we have it)
+        NSString *theString = NULL;
+
+        if (visualPluginData->streamInfo.streamTitle[0] != 0)
+		{
 			theString = [NSString stringWithCharacters:&visualPluginData->streamInfo.streamTitle[1] length:visualPluginData->streamInfo.streamTitle[0]];
-		else if ( visualPluginData->trackInfo.name[0] != 0 )
+		}
+        else if (visualPluginData->trackInfo.name[0] != 0)
+		{
 			theString = [NSString stringWithCharacters:&visualPluginData->trackInfo.name[1] length:visualPluginData->trackInfo.name[0]];
-		
-		if ( theString != NULL )
-		{
-			NSDictionary *		attrs = [NSDictionary dictionaryWithObjectsAndKeys:[NSColor whiteColor], NSForegroundColorAttributeName, NULL];
-			
-			[theString drawAtPoint:where withAttributes:attrs];
 		}
 
-		// draw the artwork
-		if ( visualPluginData->currentArtwork != NULL )
-		{
-			where.y += 20;
+        if (theString != NULL)
+        {
+            NSDictionary *attrs = [NSDictionary dictionaryWithObjectsAndKeys:[NSColor whiteColor], NSForegroundColorAttributeName, NULL];
 
-			[visualPluginData->currentArtwork drawAtPoint:where fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:0.75];
-		}
-	}
+            [theString drawAtPoint:where withAttributes:attrs];
+        }
+
+        // draw the artwork
+        if (visualPluginData->currentArtwork != NULL)
+        {
+            where.y += 20;
+
+            [visualPluginData->currentArtwork drawAtPoint:where fromRect:NSZeroRect operation:NSCompositeSourceOver fraction:0.75];
+        }
+    }
 }
 
 
@@ -93,34 +101,34 @@ void DrawVisual( VisualPluginData * visualPluginData )
 //	UpdateArtwork
 //-------------------------------------------------------------------------------------------------
 //
-void UpdateArtwork( VisualPluginData * visualPluginData, CFDataRef coverArt, UInt32 coverArtSize, UInt32 coverArtFormat )
+void UpdateArtwork(VisualPluginData *visualPluginData, CFDataRef coverArt, UInt32 coverArtSize, UInt32 coverArtFormat)
 {
-	// release current image
-	[visualPluginData->currentArtwork release];
-	visualPluginData->currentArtwork = NULL;
-	
-	// create 100x100 NSImage* out of incoming CFDataRef if non-null (null indicates there is no artwork for the current track)
-	if ( coverArt != NULL )
-	{
-		visualPluginData->currentArtwork = [[NSImage alloc] initWithData:(NSData *)coverArt];
-		
-		[visualPluginData->currentArtwork setSize:CGSizeMake( 100, 100 )];
-	}
-	
-	UpdateInfoTimeOut( visualPluginData );
+    // release current image
+    [visualPluginData->currentArtwork release];
+    visualPluginData->currentArtwork = NULL;
+
+    // create 100x100 NSImage* out of incoming CFDataRef if non-null (null indicates there is no artwork for the current track)
+    if (coverArt != NULL)
+    {
+        visualPluginData->currentArtwork = [[NSImage alloc] initWithData:(NSData *) coverArt];
+
+        [visualPluginData->currentArtwork setSize:CGSizeMake(100, 100)];
+    }
+
+    UpdateInfoTimeOut(visualPluginData);
 }
 
 //-------------------------------------------------------------------------------------------------
 //	InvalidateVisual
 //-------------------------------------------------------------------------------------------------
 //
-void InvalidateVisual( VisualPluginData * visualPluginData )
+void InvalidateVisual(VisualPluginData *visualPluginData)
 {
-	(void) visualPluginData;
+    (void) visualPluginData;
 
 #if USE_SUBVIEW
-	// when using a custom subview, we invalidate it so we get our own draw calls
-	[visualPluginData->subview setNeedsDisplay:YES];
+    // when using a custom subview, we invalidate it so we get our own draw calls
+    [visualPluginData->subview setNeedsDisplay:YES];
 #endif
 }
 
@@ -128,135 +136,144 @@ void InvalidateVisual( VisualPluginData * visualPluginData )
 //	CreateVisualContext
 //-------------------------------------------------------------------------------------------------
 //
-OSStatus ActivateVisual( VisualPluginData * visualPluginData, VISUAL_PLATFORM_VIEW destView, OptionBits options )
+OSStatus ActivateVisual(VisualPluginData *visualPluginData, VISUAL_PLATFORM_VIEW destView, OptionBits options)
 {
-	OSStatus			status = noErr;
+    OSStatus status = noErr;
 
-	visualPluginData->destView			= destView;
-	visualPluginData->destRect			= [destView bounds];
-	visualPluginData->destOptions		= options;
+    visualPluginData->destView = destView;
+    visualPluginData->destRect = [destView bounds];
+    visualPluginData->destOptions = options;
     visualPluginData->readyToDraw = false;
 
-	UpdateInfoTimeOut( visualPluginData );
+    UpdateInfoTimeOut(visualPluginData);
 
-	if ([visualPluginData->destView respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)]) {
-	    [visualPluginData->destView setWantsBestResolutionOpenGLSurface:YES];
-	}
+    if ([visualPluginData->destView respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)])
+    {
+        [visualPluginData->destView setWantsBestResolutionOpenGLSurface:YES];
+    }
 
 #if USE_SUBVIEW
 
-	// NSView-based subview
-	visualPluginData->subview = [[VisualView alloc] initWithFrame:visualPluginData->destRect];
-	if ( visualPluginData->subview != NULL )
-	{
-		[visualPluginData->subview setAutoresizingMask: (NSViewWidthSizable | NSViewHeightSizable)];
-		[visualPluginData->subview setVisualPluginData:visualPluginData];
-		if ([visualPluginData->subview respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)]) {
-		    [visualPluginData->subview setWantsBestResolutionOpenGLSurface:YES];
-		}
+    // NSView-based subview
+    visualPluginData->subview = [[VisualView alloc] initWithFrame:visualPluginData->destRect];
+    if (visualPluginData->subview != NULL)
+    {
+        [visualPluginData->subview setAutoresizingMask:(NSViewWidthSizable | NSViewHeightSizable)];
+        [visualPluginData->subview setVisualPluginData:visualPluginData];
+        if ([visualPluginData->subview respondsToSelector:@selector(setWantsBestResolutionOpenGLSurface:)])
+        {
+            [visualPluginData->subview setWantsBestResolutionOpenGLSurface:YES];
+        }
 
-		[destView addSubview:visualPluginData->subview];
-	}
-	else
-	{
-		status = memFullErr;
-	}
+        [destView addSubview:visualPluginData->subview];
+    }
+    else
+    {
+        status = memFullErr;
+    }
 
-    
+
     [[visualPluginData->subview openGLContext] makeCurrentContext];
 
-    
+
 #endif
     NSLog(@"activate visual");
-    if (visualPluginData->pm == NULL) {
-        
-        NSBundle* me = [NSBundle bundleForClass: VisualView.class];
-        NSLog(@"main bundle: %@", [me bundlePath]);
-        NSString* presetsPath = [me pathForResource:@"presets" ofType:nil];
-        NSLog(@"presets path %@", presetsPath);
-        
-        initProjectM(visualPluginData, std::string([presetsPath UTF8String]));
-        
+    if (visualPluginData->pm == NULL)
+    {
+
+        NSBundle *me = [NSBundle bundleForClass:VisualView.class];
+        NSLog(@"Main bundle path: %@", [me bundlePath]);
+        NSString *presetsPath = [me pathForResource:@"presets" ofType:nil];
+        NSLog(@"Preset path %@", presetsPath);
+        NSString *texturesPath = [me pathForResource:@"textures" ofType:nil];
+        NSLog(@"Textures path %@", texturesPath);
+
+        initProjectM(visualPluginData, std::string([presetsPath UTF8String]), std::string([presetsPath UTF8String]));
+
         // correctly size it
         ResizeVisual(visualPluginData);
     }
-    
+
     NSLog(@"activated visual");
-    
-	return status;
+
+    return status;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	MoveVisual
 //-------------------------------------------------------------------------------------------------
 //
-OSStatus MoveVisual( VisualPluginData * visualPluginData, OptionBits newOptions )
+OSStatus MoveVisual(VisualPluginData *visualPluginData, OptionBits newOptions)
 {
-    visualPluginData->destRect	  = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
-	visualPluginData->destOptions = newOptions;
+    visualPluginData->destRect = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
+    visualPluginData->destOptions = newOptions;
 
-	return noErr;
+    return noErr;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	DeactivateVisual
 //-------------------------------------------------------------------------------------------------
 //
-OSStatus DeactivateVisual( VisualPluginData * visualPluginData )
+OSStatus DeactivateVisual(VisualPluginData *visualPluginData)
 {
 #if USE_SUBVIEW
-	[visualPluginData->subview removeFromSuperview];
-	[visualPluginData->subview autorelease];
-	visualPluginData->subview = NULL;
-	[visualPluginData->currentArtwork release];
-	visualPluginData->currentArtwork = NULL;
+    [visualPluginData->subview removeFromSuperview];
+    [visualPluginData->subview autorelease];
+    visualPluginData->subview = NULL;
+    [visualPluginData->currentArtwork release];
+    visualPluginData->currentArtwork = NULL;
 #endif
 
-	visualPluginData->destView			= NULL;
-	visualPluginData->destRect			= CGRectNull;
-	visualPluginData->drawInfoTimeOut	= 0;
+    visualPluginData->destView = NULL;
+    visualPluginData->destRect = CGRectNull;
+    visualPluginData->drawInfoTimeOut = 0;
     visualPluginData->readyToDraw = false;
 
-    if (visualPluginData->pm != NULL) {
+    if (visualPluginData->pm != NULL)
+    {
         projectm_destroy(visualPluginData->pm);
         visualPluginData->pm = NULL;
     }
-	
-	return noErr;
+
+    return noErr;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	ResizeVisual
 //-------------------------------------------------------------------------------------------------
 //
-OSStatus ResizeVisual( VisualPluginData * visualPluginData )
+OSStatus ResizeVisual(VisualPluginData *visualPluginData)
 {
     visualPluginData->destRect = [[NSScreen mainScreen] convertRectToBacking:([visualPluginData->subview bounds])];
 
-    if (visualPluginData->pm != NULL) {
-        projectm_set_window_size(visualPluginData->pm, visualPluginData->destRect.size.width, visualPluginData->destRect.size.height);
-        NSLog(@"resized to %@ %@", [NSNumber numberWithDouble: visualPluginData->destRect.size.width], [NSNumber numberWithDouble: visualPluginData->destRect.size.height]);
-        
+    if (visualPluginData->pm != NULL)
+    {
+        projectm_set_window_size(visualPluginData->pm, visualPluginData->destRect.size.width,
+                                 visualPluginData->destRect.size.height);
+        NSLog(@"resized to %@ %@", [NSNumber numberWithDouble:visualPluginData->destRect.size.width],
+              [NSNumber numberWithDouble:visualPluginData->destRect.size.height]);
+
         visualPluginData->readyToDraw = true;
     }
 
-	return noErr;
+    return noErr;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	ConfigureVisual
 //-------------------------------------------------------------------------------------------------
 //
-OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
+OSStatus ConfigureVisual(VisualPluginData *visualPluginData)
 {
-	(void) visualPluginData;
+    (void) visualPluginData;
 
-	// load nib
-	// show modal dialog
-	// update settings
-	// invalidate
+    // load nib
+    // show modal dialog
+    // update settings
+    // invalidate
 
-	return noErr;
+    return noErr;
 }
 
 #pragma mark -
@@ -267,16 +284,15 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
 
 @synthesize visualPluginData = _visualPluginData;
 
-- (id)initWithFrame:(NSRect)frame
-{
+- (id)initWithFrame:(NSRect)frame {
     NSLog(@"initWithFrame called");
     NSOpenGLPixelFormatAttribute pixelFormatAttributes[] =
-    {
-        NSOpenGLPFAOpenGLProfile,
-        NSOpenGLProfileVersion3_2Core,
-        NSOpenGLPFAAccelerated,
-        0
-    };
+            {
+                    NSOpenGLPFAOpenGLProfile,
+                    NSOpenGLProfileVersion3_2Core,
+                    NSOpenGLPFAAccelerated,
+                    0
+            };
     NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
     if (pixelFormat == nil)
     {
@@ -299,73 +315,66 @@ OSStatus ConfigureVisual( VisualPluginData * visualPluginData )
 //	isOpaque
 //-------------------------------------------------------------------------------------------------
 //
-- (BOOL)isOpaque
-{
-	// your custom views should always be opaque or iTunes will waste CPU time drawing behind you
-	return YES;
+- (BOOL)isOpaque {
+    // your custom views should always be opaque or iTunes will waste CPU time drawing behind you
+    return YES;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	drawRect
 //-------------------------------------------------------------------------------------------------
 //
--(void)drawRect:(NSRect)dirtyRect
-{
-	if ( _visualPluginData != NULL )
-	{
-		DrawVisual( _visualPluginData );
-	}
+- (void)drawRect:(NSRect)dirtyRect {
+    if (_visualPluginData != NULL)
+    {
+        DrawVisual(_visualPluginData);
+    }
 }
 
 //-------------------------------------------------------------------------------------------------
 //	acceptsFirstResponder
 //-------------------------------------------------------------------------------------------------
 //
-- (BOOL)acceptsFirstResponder
-{
-	return YES;
+- (BOOL)acceptsFirstResponder {
+    return YES;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	becomeFirstResponder
 //-------------------------------------------------------------------------------------------------
 //
-- (BOOL)becomeFirstResponder
-{
-	return YES;
+- (BOOL)becomeFirstResponder {
+    return YES;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	resignFirstResponder
 //-------------------------------------------------------------------------------------------------
 //
-- (BOOL)resignFirstResponder
-{
-	return YES;
+- (BOOL)resignFirstResponder {
+    return YES;
 }
 
 - (void)keyDown:(NSEvent *)event {
-    if ( _keypressProjectM( _visualPluginData, PROJECTM_KEYDOWN, event ) )
-        return;
+    if (_keypressProjectM(_visualPluginData, event))
+	{
+		return;
+	}
 
-	[super keyDown:event];
+    [super keyDown:event];
 }
 
 - (void)keyUp:(NSEvent *)event {
-    if ( _keypressProjectM( _visualPluginData, PROJECTM_KEYUP, event ) )
-        return;
-    
-	[super keyUp:event];
+    [super keyUp:event];
 }
 
-static bool _keypressProjectM( VisualPluginData * visualPluginData, projectMEvent eventType, NSEvent *eventRec ) {
+static bool _keypressProjectM(VisualPluginData *visualPluginData, NSEvent *eventRec)
+{
     // Handle key events here.
-	// Do not eat the space bar, ESC key, TAB key, or the arrow keys: iTunes reserves those keys.
-    
-    projectMKeycode keycode = cocoa2pmKeycode(eventRec);
-    projectMModifier mod = cocoa2pmModifier(eventRec);
-    
-    switch ([eventRec keyCode]) {
+    // Do not eat the space bar, ESC key, TAB key, or the arrow keys: iTunes reserves those keys.
+
+    switch ([eventRec keyCode])
+    {
         case kVK_Tab:
         case kVK_Space:
         case kVK_LeftArrow:
@@ -373,19 +382,42 @@ static bool _keypressProjectM( VisualPluginData * visualPluginData, projectMEven
         case kVK_UpArrow:
         case kVK_DownArrow:
         case kVK_Escape:
-            break;
-            
-        default:
-            keypressProjectM( visualPluginData, eventType, keycode, mod );
+            return false;
+
+            // Shuffle
+        case kVK_ANSI_Y:
+            projectm_playlist_set_shuffle(visualPluginData->playlist,
+                                          !projectm_playlist_get_shuffle(visualPluginData->playlist));
             return true;
+
+            // Random preset
+        case kVK_ANSI_R:
+        {
+            bool oldShuffle = projectm_playlist_get_shuffle(visualPluginData->playlist);
+            projectm_playlist_set_shuffle(visualPluginData->playlist, true);
+            projectm_playlist_play_next(visualPluginData->playlist, true);
+            projectm_playlist_set_shuffle(visualPluginData->playlist, oldShuffle);
+        }
+            return true;
+
+            // Next preset
+        case kVK_ANSI_N:
+            projectm_playlist_play_next(visualPluginData->playlist, true);
+            return true;
+
+            // Previous preset
+        case kVK_ANSI_P:
+            projectm_playlist_play_previous(visualPluginData->playlist, true);
+            return true;
+
+        default:
+            return false;
     }
-    
-    return false;
 }
 
 @end
 
-#endif	// USE_SUBVIEW
+#endif    // USE_SUBVIEW
 
 #pragma mark -
 
@@ -393,53 +425,53 @@ static bool _keypressProjectM( VisualPluginData * visualPluginData, projectMEven
 //	GetVisualName
 //-------------------------------------------------------------------------------------------------
 //
-void GetVisualName( ITUniStr255 name )
+void GetVisualName(ITUniStr255 name)
 {
-	CFIndex length = CFStringGetLength( kTVisualPluginName );
+    CFIndex length = CFStringGetLength(kTVisualPluginName);
 
-	name[0] = (UniChar)length;
-	CFStringGetCharacters( kTVisualPluginName, CFRangeMake( 0, length ), &name[1] );
+    name[0] = (UniChar) length;
+    CFStringGetCharacters(kTVisualPluginName, CFRangeMake(0, length), &name[1]);
 }
 
 //-------------------------------------------------------------------------------------------------
 //	GetVisualOptions
 //-------------------------------------------------------------------------------------------------
 //
-OptionBits GetVisualOptions( void )
+OptionBits GetVisualOptions(void)
 {
-	OptionBits		options = (kVisualUsesOnly3D | kVisualWantsIdleMessages);
-	
+    OptionBits options = (kVisualUsesOnly3D | kVisualWantsIdleMessages);
+
 #if USE_SUBVIEW
-	options |= kVisualUsesSubview;
+    options |= kVisualUsesSubview;
 #endif
 
-	return options;
+    return options;
 }
 
 //-------------------------------------------------------------------------------------------------
 //	iTunesPluginMainMachO
 //-------------------------------------------------------------------------------------------------
 //
-OSStatus iTunesPluginMainMachO( OSType message, PluginMessageInfo * messageInfo, void * refCon )
+OSStatus iTunesPluginMainMachO(OSType message, PluginMessageInfo *messageInfo, void *refCon)
 {
-	OSStatus		status;
-	
-	(void) refCon;
-	
-	switch ( message )
-	{
-		case kPluginInitMessage:
-			status = RegisterVisualPlugin( messageInfo );
-			break;
-			
-		case kPluginCleanupMessage:
-			status = noErr;
-			break;
-			
-		default:
-			status = unimpErr;
-			break;
-	}
-	
-	return status;
+    OSStatus status;
+
+    (void) refCon;
+
+    switch (message)
+    {
+        case kPluginInitMessage:
+            status = RegisterVisualPlugin(messageInfo);
+            break;
+
+        case kPluginCleanupMessage:
+            status = noErr;
+            break;
+
+        default:
+            status = unimpErr;
+            break;
+    }
+
+    return status;
 }

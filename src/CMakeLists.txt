@@ -20,5 +20,5 @@ target_link_libraries(ProjectM
     "-framework AppKit"
     "-framework CoreData"
     "-framework Foundation"
-    libprojectM::static
+    libprojectM::playlist
     )

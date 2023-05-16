@@ -49,8 +49,11 @@
 #define ITUNESPLUGIN_H
 
 #include "macos/iTunesVisualAPI.h"
-#include "libprojectM/projectM.h"
 #include "getConfigFilename.h"
+
+#include <projectM-4/projectM.h>
+#include <projectM-4/playlist.h>
+
 #include <time.h>
 #include <OpenGL/gl3.h>
 
@@ -99,7 +102,8 @@ struct VisualPluginData
 	ITAppProcPtr		appProc;
     
     // projectM stuff
-    projectm_handle      pm;
+    projectm_handle          pm;
+    projectm_playlist_handle playlist;
 
 #if TARGET_OS_MAC
 	NSView*		        destView;
@@ -158,8 +162,6 @@ void		InvalidateVisual( VisualPluginData * visualPluginData );
 
 OSStatus	ConfigureVisual( VisualPluginData * visualPluginData );
 
-void        initProjectM( VisualPluginData * visualPluginData, std::string presetPath );
-void        renderProjectMTexture( VisualPluginData * visualPluginData );
-void        keypressProjectM( VisualPluginData * visualPluginData, projectMEvent event, projectMKeycode keycode, projectMModifier mod );
+void        initProjectM( VisualPluginData * visualPluginData, const std::string& presetPath, const std::string& texturePath);
 
 #endif

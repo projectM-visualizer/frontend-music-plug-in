@@ -26,6 +26,12 @@ foreach(preset_dir ${PRESET_DIRS})
         )
 endforeach()
 
+install(DIRECTORY ${TEXTURE_DIR}
+        DESTINATION "${PROJECTM_PLUGIN_BUNDLE_DIR}/Contents/Resources/textures/"
+        COMPONENT MusicPlugin
+        PATTERN *.md EXCLUDE
+        )
+
 configure_file(install-codesign.cmake.in "${CMAKE_BINARY_DIR}/install-codesign.cmake" @ONLY)
 install(SCRIPT "${CMAKE_BINARY_DIR}/install-codesign.cmake"
     COMPONENT MusicPlugin

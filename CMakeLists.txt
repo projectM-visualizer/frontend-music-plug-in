@@ -15,13 +15,18 @@ endif()
 
 set(CODESIGN_IDENTITY_BUNDLE "-" CACHE STRING "Code signing identity for signing the plug-in bundle. Default is \"-\" (automatic signing).")
 set(CODESIGN_IDENTITY_INSTALLER "" CACHE STRING "Code signing identity for signing the installer package. Default is \"\" (no signing).")
-set(PRESET_DIRS "" CACHE STRING "List of paths with presets and textures. Required.")
+set(PRESET_DIRS "" CACHE STRING "List of paths with presets. Required.")
+set(TEXTURE_DIR "" CACHE STRING "Path with default textures. Required.")
 
 if(PRESET_DIRS STREQUAL "")
-    message(FATAL_ERROR "PRESET_DIRS must be set to at least one preset and/or texture dir.")
+    message(FATAL_ERROR "PRESET_DIRS must be set to at least one preset dir.")
 endif()
 
-find_package(libprojectM REQUIRED)
+if(TEXTURE_DIR STREQUAL "")
+    message(FATAL_ERROR "TEXTURE_DIR must be set to a texture dir.")
+endif()
+
+find_package(projectM4 REQUIRED COMPONENTS Playlist)
 
 add_subdirectory(src)
 
